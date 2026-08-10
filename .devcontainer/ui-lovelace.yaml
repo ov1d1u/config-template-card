@@ -3,7 +3,7 @@ views:
       - type: picture-elements
         image: http://hs.sbcounty.gov/CN/Photo%20Gallery/_t/Sample%20Picture%20-%20Koala_jpg.jpg?Mobile=0
         elements:
-          - type: custom:config-template-card
+          - type: custom:nunjucks-template-card
             style:
               top: 80.3%
               left: 77.6%
@@ -18,54 +18,54 @@ views:
               image: /local/floorplan/famfanoff.png
               state_image:
                 'on': /local/floorplan/famfanon.png
-          - type: 'custom:config-template-card'
+          - type: 'custom:nunjucks-template-card'
             variables:
-              - states['light.bed_light'].state
+              - "{{ states('light.bed_light') }}"
             entities:
               - light.bed_light
             element:
               type: icon
-              icon: "${vars[0] === 'on' ? 'mdi:home' : 'mdi:circle'}"
+              icon: "{{ 'mdi:home' if vars[0] == 'on' else 'mdi:circle' }}"
             style:
               top: 47%
               left: 75%
       - type: entities
         entities:
-          - type: 'custom:config-template-card'
+          - type: 'custom:nunjucks-template-card'
             variables:
-              - states['light.bed_light'].state
+              - "{{ states('light.bed_light') }}"
             entities:
               - light.bed_light
             row:
               type: section
-              label: "${vars[0] === 'on' ? 'Light On' : 'Light Off'}"
+              label: "{{ 'Light On' if vars[0] == 'on' else 'Light Off' }}"
           - entity: light.bed_light
-      - type: 'custom:config-template-card'
+      - type: 'custom:nunjucks-template-card'
         variables:
-          - states['sensor.light'].state
+          - "{{ states('sensor.light') }}"
         entities:
-          - '${vars[0]}'
+          - '{{ vars[0] }}'
         card:
           type: light
-          entity: '${vars[0]}'
-          name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
-      - type: 'custom:config-template-card'
+          entity: '{{ vars[0] }}'
+          name: "{{ 'Light On' if is_state(vars[0], 'on') else 'Light Off' }}"
+      - type: 'custom:nunjucks-template-card'
         variables:
-          - states['light.bed_light'].state
-          - states['cover.garage_door'].state
+          - "{{ states('light.bed_light') }}"
+          - "{{ states('cover.garage_door') }}"
         entities:
           - light.bed_light
           - cover.garage_door
           - alarm_control_panel.alarm
           - climate.ecobee
         card:
-          type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
+          type: "{{ 'custom:hui-glance-card' if vars[0] == 'on' else 'custom:hui-entities-card' }}"
           entities:
             - entity: alarm_control_panel.alarm
-              name: "${vars[1] === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
+              name: "{{ 'Close the garage!' if vars[1] == 'open' and is_state('alarm_control_panel.alarm', 'armed_home') else '' }}"
             - entity: binary_sensor.basement_floor_wet
             - entity: climate.ecobee
-              name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
+              name: "{{ 'Cozy' if state_attr('climate.ecobee', 'current_temperature') | float > 22 else 'Too Hot/Cold' }}"
             - entity: cover.garage_door
-            - entity: "${vars[0] === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
-              icon: "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
+            - entity: "{{ 'light.bed_light' if vars[0] == 'on' else 'climate.ecobee' }}"
+              icon: "{{ 'mdi:hotel' if vars[1] == 'open' else '' }}"

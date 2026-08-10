@@ -1,25 +1,26 @@
 import { LitElement, html, customElement, property, TemplateResult, PropertyValues, state } from 'lit-element';
 import deepClone from 'deep-clone-simple';
 import { computeCardSize, HomeAssistant, LovelaceCard } from 'custom-card-helpers';
+import { hasTemplate, renderTemplate } from 'ha-nunjucks';
 
-import { ConfigTemplateConfig } from './types';
+import { NunjucksTemplateConfig } from './types';
 import { CARD_VERSION } from './const';
 
 /* eslint no-console: 0 */
 console.info(
-  `%c  CONFIG-TEMPLATE-CARD  \n%c  Version ${CARD_VERSION}         `,
+  `%c  NUNJUCKS-TEMPLATE-CARD  \n%c  Version ${CARD_VERSION}         `,
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray',
 );
 
-@customElement('config-template-card')
-export class ConfigTemplateCard extends LitElement {
+@customElement('nunjucks-template-card')
+export class NunjucksTemplateCard extends LitElement {
   @property({ attribute: false }) public hass?: HomeAssistant;
-  @state() private _config?: ConfigTemplateConfig;
+  @state() private _config?: NunjucksTemplateConfig;
   @state() private _helpers?: any;
   private _initialized = false;
 
-  public setConfig(config: ConfigTemplateConfig): void {
+  public setConfig(config: NunjucksTemplateConfig): void {
     if (!config) {
       throw new Error('Invalid configuration');
     }
@@ -34,7 +35,7 @@ export class ConfigTemplateCard extends LitElement {
 
     if (config.card && config.card.type === 'picture-elements') {
       console.warn(
-        'WARNING: config-template-card should not be used with the picture-elements card itself. Instead use it as one of the elements. Check the README for details',
+        'WARNING: nunjucks-template-card should not be used with the picture-elements card itself. Instead use it as one of the elements. Check the README for details',
       );
     }
 
@@ -68,8 +69,8 @@ export class ConfigTemplateCard extends LitElement {
   private getLovelaceConfig() {
     const panel = this.getLovelacePanel() as any;
 
-    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.config_template_card_vars) {
-      return panel.lovelace.config.config_template_card_vars
+    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.nunjucks_template_card_vars) {
+      return panel.lovelace.config.nunjucks_template_card_vars
     }
 
     return {}
@@ -185,7 +186,7 @@ export class ConfigTemplateCard extends LitElement {
           config[key] = this._evaluateArray(value);
         } else if (typeof value === 'object') {
           config[key] = this._evaluateConfig(value);
-        } else if (typeof value === 'string' && value.includes('${')) {
+        } else if (typeof value === 'string' && hasTemplate(value)) {
           config[key] = this._evaluateTemplate(value);
         }
       }
@@ -202,7 +203,7 @@ export class ConfigTemplateCard extends LitElement {
         array[i] = this._evaluateArray(value);
       } else if (typeof value === 'object') {
         array[i] = this._evaluateConfig(value);
-      } else if (typeof value === 'string' && value.includes('${')) {
+      } else if (typeof value === 'string' && hasTemplate(value)) {
         array[i] = this._evaluateTemplate(value);
       }
     }
@@ -210,18 +211,17 @@ export class ConfigTemplateCard extends LitElement {
     return array;
   }
 
-  private _evaluateTemplate(template: string): string {
-    if (!template.includes('${')) {
+  private _evaluateTemplate(template: string): any {
+    if (!hasTemplate(template) || !this.hass) {
       return template;
     }
 
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    const user = this.hass ? this.hass.user : undefined;
-    const states = this.hass ? this.hass.states : undefined;
-    const vars: any[] = [];
-    const namedVars: { [key: string]: any } = {};
+    return renderTemplate(this.hass as any, template, this._buildContext());
+  }
+
+  private _buildContext(): { vars: any[] & { [key: string]: any } } {
     const arrayVars: string[] = [];
-    let varDef = '';
+    const namedVars: { [key: string]: string } = {};
 
     if (this._config) {
       if (Array.isArray(this._config.variables)) {
@@ -241,18 +241,18 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
-    for (const v in arrayVars) {
-      const newV = eval(arrayVars[v]);
-      vars.push(newV);
-    }
+    const context: { vars: any[] & { [key: string]: any } } = { vars: [] };
 
-    for (const varName in namedVars) {
-      const newV = eval(namedVars[varName]);
-      vars[varName] = newV;
-      // create variable definitions to be injected:
-      varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
-    }
+    arrayVars.forEach(v => {
+      context.vars.push(hasTemplate(v) ? renderTemplate(this.hass as any, v, context) : v);
+    });
 
-    return eval(varDef + template.substring(2, template.length - 1));
+    Object.entries(namedVars).forEach(([varName, value]) => {
+      const newV = hasTemplate(value) ? renderTemplate(this.hass as any, value, context) : value;
+      context.vars[varName] = newV;
+      context[varName] = newV;
+    });
+
+    return context;
   }
 }

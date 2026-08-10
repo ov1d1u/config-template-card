@@ -1,5 +1,5 @@
 {
-    "name": "Config Template Card",
+    "name": "Nunjucks Template Card",
     "render_readme": true,
     "homeassistant": "0.110.0"
 }

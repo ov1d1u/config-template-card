@@ -1,6 +1,6 @@
 import { LovelaceCardConfig, EntitiesCardEntityConfig, LovelaceElementConfigBase } from 'custom-card-helpers';
 
-export interface ConfigTemplateConfig {
+export interface NunjucksTemplateConfig {
   type: string;
   entities: string[];
   variables?: string[] | { [key: string]: string };
