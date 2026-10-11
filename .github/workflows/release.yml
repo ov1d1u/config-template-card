@@ -15,7 +15,7 @@ jobs:
       - name: Build the file
         run: |
           cd /home/runner/work/config-template-card/config-template-card
-          npm install
+          npm install --legacy-peer-deps
           npm run build
 
       # Upload build file to the releas as an asset.

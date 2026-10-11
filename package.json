@@ -1,6 +1,6 @@
 {
   "name": "nunjucks-template-card",
-  "version": "1.3.1",
+  "version": "1.3.7",
   "description": "Lovelace nunjucks-template-card",
   "keywords": [
     "home-assistant",
@@ -17,7 +17,7 @@
   "dependencies": {
     "custom-card-helpers": "^1.7.2",
     "deep-clone-simple": "^1.1.1",
-    "ha-nunjucks": "^1.7.7",
+    "ha-nunjucks": "^1.7.9",
     "home-assistant-js-websocket": "^5.11.1",
     "lit": "^2.0.0-rc.2"
   },
