@@ -19,6 +19,11 @@ export class NunjucksTemplateCard extends LitElement {
   @state() private _config?: NunjucksTemplateConfig;
   @state() private _helpers?: any;
   private _initialized = false;
+  // The child element is reused across renders and only recreated when the
+  // evaluated config changes. Recreating it on every entity update leaked the
+  // whole child tree whenever a child failed to clean up after itself.
+  private _element?: any;
+  private _elementConfigKey?: string;
 
   public setConfig(config: NunjucksTemplateConfig): void {
     if (!config) {
@@ -48,6 +53,8 @@ export class NunjucksTemplateCard extends LitElement {
     }
 
     this._config = config;
+    this._element = undefined;
+    this._elementConfigKey = undefined;
 
     this.loadCardHelpers();
   }
@@ -95,6 +102,10 @@ export class NunjucksTemplateCard extends LitElement {
             return true;
           }
         }
+        // No re-render needed, but keep the child's hass current.
+        if (this._element && this.hass) {
+          this._element.hass = this.hass;
+        }
         return false;
       }
     }
@@ -137,11 +148,7 @@ export class NunjucksTemplateCard extends LitElement {
       style = this._evaluateConfig(style);
     }
 
-    const element = this._config.card
-      ? this._helpers.createCardElement(config)
-      : this._config.row
-      ? this._helpers.createRowElement(config)
-      : this._helpers.createHuiElement(config);
+    const element = this._getElement(config);
     element.hass = this.hass;
 
     if (this._config.element) {
@@ -162,6 +169,39 @@ export class NunjucksTemplateCard extends LitElement {
         ${element}
       </div>
     `;
+  }
+
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  private _getElement(config: any): any {
+    const key = JSON.stringify(config);
+    if (this._element && key === this._elementConfigKey) {
+      return this._element;
+    }
+
+    const element = this._config?.card
+      ? this._helpers.createCardElement(config)
+      : this._config?.row
+      ? this._helpers.createRowElement(config)
+      : this._helpers.createHuiElement(config);
+
+    // A custom card whose element is not defined yet is created as a
+    // placeholder that fires ll-rebuild once it is. Recreate it then.
+    element.addEventListener(
+      'll-rebuild',
+      (ev: Event) => {
+        ev.stopPropagation();
+        if (this._element === element) {
+          this._element = undefined;
+          this._elementConfigKey = undefined;
+          this.requestUpdate();
+        }
+      },
+      { once: true },
+    );
+
+    this._element = element;
+    this._elementConfigKey = key;
+    return element;
   }
 
   private _initialize(): void {
